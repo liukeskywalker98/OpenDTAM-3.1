@@ -157,6 +157,8 @@ int App_main( int argc, char** argv )
             
 
             bool doneOptimizing; int Acount=0; int QDcount=0;
+
+            // Optimize CV loop
             do{
 //                 cout<<"Theta: "<< optimizer.getTheta()<<endl;
 //
@@ -197,10 +199,12 @@ int App_main( int argc, char** argv )
             double m;
             minMaxLoc(out,NULL,&m);
             tracker.depth=out*(.66*cv.near/m);
-            if (imageNum+imagesPerCV+1>=numImg){
+
+            // Track based on the next images
+            if (imageNum+imagesPerCV+1>=numImg){ // if using the next imagesPerCV images will overflow, then inc = -1
                 inc=-1;
             }
-            imageNum-=imagesPerCV+1-inc;
+            imageNum-=imagesPerCV+1-inc; // if it won't overflow then use the previous imagesPerCV. if it will then use two before that
             for(int i=imageNum;i<numImg&&i<=imageNum+imagesPerCV+1;i++){
                 tracker.addFrame(images[i]);
                 tracker.align();

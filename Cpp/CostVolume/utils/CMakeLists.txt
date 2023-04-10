@@ -6,7 +6,7 @@ project(dtam)
 #message(STATUS ${CMAKE_MODULE_PATH})
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O3 -pg -ggdb")
 
-find_package( OpenCV 2.4.9 REQUIRED )
+find_package( OpenCV 4.5 REQUIRED )
 find_package( Qt5Core REQUIRED)
 
 #message(STATUS ${OpenCV_CONSIDERED_CONFIGS})
