@@ -14,6 +14,9 @@
 #include "graphics.hpp"
 #include "set_affinity.h"
 #include "Track/Track.hpp"
+#include "apriltag/apriltag.h"
+#include "apriltag/apriltag_pose.h"
+#include "apriltag/tagStandard41h12.h"
 
 #include "utils/utils.hpp"
 
@@ -43,7 +46,7 @@ int main( int argc, char** argv ){
 
 int App_main( int argc, char** argv )
 {
-    int numImg=50;
+    int numImg=10;
 
 #if !defined WIN32 && !defined _WIN32 && !defined WINCE && defined __linux__ && !defined ANDROID
     pthread_setname_np(pthread_self(),"App_main");
@@ -56,27 +59,70 @@ int App_main( int argc, char** argv )
 
     
     double reconstructionScale=5/5.;
+	
+	apriltag_detector_t *td = apriltag_detector_create();
+	apriltag_family_t *tf = tagStandard41h12_create();
+	apriltag_detector_add_family(td, tf);
 
     for(int i=0;i<numImg;i++){
         Mat tmp;
-        sprintf(filename,"%s/scene_%03d.png",argv[1],i);
+        sprintf(filename,"%s/scene_%03d.jpg",argv[1],i);
 //        sprintf(filename,"../../Trajectory_30_seconds/scene_%03d.png",i);
-        convertAhandaPovRayToStandard(argv[1],
-                                      i,
-                                      cameraMatrix,
-                                      R,
-                                      T);
+        //convertAhandaPovRayToStandard(argv[1],
+        //                              i,
+        //                              cameraMatrix,
+        //                              R,
+        //                              T);
+		// Try to detect an April tag
+		
+		// From our opencv undistort
+		cameraMatrix.data = {392.31866455, 0, 314.93378122,
+							 0, 522.89459229, 251.50994903,
+							 0, 0, 1};
         Mat image;
         cout<<"Opening: "<< filename << endl;
         
         imread(filename, -1).convertTo(image,CV_32FC3,1.0/65535.0);
         resize(image,image,Size(),reconstructionScale,reconstructionScale);
         
+		img_u8_t* byte_image = image_u8_create_from_pnm(filename); 
+		zarray_t *detections = apriltag_detector_detect(td, byte_image);
+		
+		Mat R = Mat(3, 3, CV_64FC1);
+		Mat t = Mat(3, 1, CV_64FC1);
+		if (zarray_size(detections) > 0) {
+			for (int i = 0; i < 1; i++) {
+		    	apriltag_detection_t *det;
+			    zarray_get(detections, i, &det);
+
+		    // Do stuff with detections here.
+				apriltag_detection_info_t info;
+				info.det = det;
+				info.tagsize = 0.02; //TODO: Change as needed
+				info.fx = 392.31866455;
+				info.fy = 522.89459229;
+				info.cx = 314.93378122;
+				info.cy = 251.50994903;
+				apriltag_pose_t pose;
+				estimate_tag_pose(&info, &pose);
+			}	
+			matd_t *pR = pose.R;
+			R = Mat(2, {R->nrows, R->ncols}, CV_64FC1, pR->data);
+			matd_t *pt = pose.t;
+			t = Mat(2, {t->nrows, t->ncols}, CV_64FC1, pt->data);
+			cout << "Retrieved pose from Apriltag in image " << i << endl;
+ 
         images.push_back(image.clone());
         Rs.push_back(R.clone());
         Ts.push_back(T.clone());
         Rs0.push_back(R.clone());
         Ts0.push_back(T.clone());
+
+		// Free everything to prevent memory leaks
+		matd_destroy(pR);
+		matd_destroy(pt);
+		image_u8_destroy(byte_image);
+		apriltag_detections_destroy(detections);
     }
     HostMem cret(images[0].rows,images[0].cols,CV_32FC1);
     ret=cret.createMatHeader();
@@ -86,6 +132,7 @@ int App_main( int argc, char** argv )
     cameraMatrix+=(Mat)(Mat_<double>(3,3) <<    0.0,0.0,0.5,
                                                 0.0,0.0,0.5,
                                                 0.0,0.0,0.0);
+	// TODO: This Camera matrix is wrong?
     cameraMatrix=cameraMatrix.mul((Mat)(Mat_<double>(3,3) <<    sx,0.0,sx,
                                                                 0.0,sy ,sy,
                                                                 0.0,0.0,1.0));
@@ -238,6 +285,8 @@ int App_main( int argc, char** argv )
     }
     s.waitForCompletion();
     Stream::Null().waitForCompletion();
+	tagStandard41h12_destroy(tf);
+	apriltag_detector_destroy(td);
     return 0;
 }
 

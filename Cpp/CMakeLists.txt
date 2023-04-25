@@ -11,6 +11,7 @@ find_package(OpenCV 4.5 REQUIRED)
 find_package(Qt5Core REQUIRED)
 find_package(CUDA REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system)
+find_package(Threads REQUIRED)
 #add_definitions( -D__OPENCV_BUILD=1 )
 #message(STATUS ${OpenCV_CONSIDERED_CONFIGS})
 
@@ -43,7 +44,8 @@ add_subdirectory(Optimizer)
 add_subdirectory(DepthmapDenoiseWeightedHuber)
 add_subdirectory(utils)
 add_subdirectory(Scheduler)
-
+#add April Tag Library
+add_subdirectory(apriltag)
 
 include_directories("${BASEPATH}" ${CUDA_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
 
@@ -56,5 +58,5 @@ set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};
 )
 cuda_add_library(OpenDTAM SHARED ${DTAM_SOURCES} OpenDTAM.cpp)
 target_link_libraries(OpenDTAM pthread opencv_cudaimgproc opencv_cudastereo ${Boost_LIBRARIES})
-add_executable (a.out testprog.cpp convertAhandaPovRayToStandard.cpp graphics.cpp)
+add_executable (a.out testprog.cpp graphics.cpp)
 target_link_libraries( a.out  OpenDTAM ${OpenCV_LIBS} ${Boost_LIBRARIES})
